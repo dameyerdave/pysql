@@ -3,11 +3,11 @@
 # brew install unixodbc
 # install odbc manager from odbcmanager.net
 # install odbc driver from https://dev.mysql.com/downloads/connector/odbc/
-# install odbc driver from 
+# install odbc driver from
 # odbcinst -j --> /usr/local/etc/odbcinst.ini:
 # [MySQL ODBC 8.0 Unicode Driver]
 # driver = /usr/local/mysql-connector-odbc-8.0.18-macos10.14-x86-64bit/lib/libmyodbc8w.so
-# 
+#
 # [MySQL ODBC 8.0 Ansi Driver]
 # driver = /usr/local/mysql-connector-odbc-8.0.18-macos10.14-x86-64bit/lib/libmyodbc8a.so
 
@@ -19,9 +19,15 @@ sys.path.append(scdir + '/lib')
 
 import configparser
 import argparse
-import pyodbc 
+import pyodbc
 from os.path import expanduser
 import csv
+import traceback
+import re
+
+def abort(ex):
+    print(ex)
+    sys.exit(1)
 
 class Config():
     def __init__(self):
@@ -33,7 +39,7 @@ class Config():
         value = self.config[section][key]
         # replace variables
         if '$' in value:
-            _vars = re.findall('\$[\w\.]+', value)
+            _vars = re.findall('\$[^\$][\w\.]+', value)
             for _var in _vars:
                 if not '.' in _var:
                     abort("Variable " + _var + "s invalid, it must be defined as '$section.key'!")
@@ -51,7 +57,7 @@ if __name__ == "__main__":
 
     try:
         config = Config()
-    
+
         #parser = argparse.ArgumentParser(description='UC Management Script', epilog=epilog, formatter_class=CustomFormatter)
         #parser.add_argument('-a', '--action', required=True, choices=['config','makeconfig','clone','pull','status','merge','deploy'],  help='action to execute')
         #parser.add_argument('-e', '--environment', required=False, choices=['prod', 'test', 'manip', 'fixes', 'shared', 'tacLOM', 'localfiles'], default='prod', help='environment to use')
@@ -67,6 +73,13 @@ if __name__ == "__main__":
             writer = csv.writer(csvfile)
             writer.writerow([x[0] for x in cursor.description])  # column headers
             for row in rows:
-                writer.writerow(row)
+                new_row = []
+                for col in row:
+                    if isinstance(col,str):
+                        new_row.append(col.strip())
+                    else:
+                        new_row.append(col)
+                writer.writerow(new_row)
     except Exception as e:
+        print(traceback.format_exc())
         print(e)
